@@ -1304,6 +1304,9 @@ struct ion_handle *ion_import_dma_buf(struct ion_client *client, int fd)
 	/* if a handle exists for this buffer just take a reference to it */
 	handle = ion_handle_lookup(client, buffer);
 	if (!IS_ERR(handle)) {
+		trace_printk("[%d] client : %p, handle : %p, buffer :\
+				%p, caller : %pF\n", __LINE__, client, handle, buffer,
+				__builtin_return_address(0));
 		ion_handle_get(handle);
 		mutex_unlock(&client->lock);
 		goto end;
@@ -1311,6 +1314,9 @@ struct ion_handle *ion_import_dma_buf(struct ion_client *client, int fd)
 	mutex_unlock(&client->lock);
 
 	handle = ion_handle_create(client, buffer);
+	trace_printk("[%d] client : %p, handle : %p, buffer : %p, caller\
+			: %pF\n", __LINE__, client, handle, buffer,
+			__builtin_return_address(0));
 	if (IS_ERR(handle))
 		goto end;
 

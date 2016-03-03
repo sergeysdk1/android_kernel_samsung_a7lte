@@ -56,6 +56,7 @@ static void __iomem *virt_bases[N_BASES];
 #define GPLL1_USER_CTL					0x20010
 #define GPLL1_CONFIG_CTL				0x20014
 #define GPLL1_STATUS					0x2001C
+#define SNOC_QOSGEN					0x2601C
 #define GPLL2_MODE					0x4A000
 #define GPLL2_L_VAL					0x4A004
 #define GPLL2_M_VAL					0x4A008
@@ -237,6 +238,7 @@ static void __iomem *virt_bases[N_BASES];
 #define gpll0_source_val		1
 #define gpll0_aux_source_val		3
 #define gpll1_source_val		1
+#define gpll1_aux_source_val    2
 #define gpll2_source_val		2
 #define dsi0_phypll_mm_source_val	1
 
@@ -341,9 +343,7 @@ static DEFINE_VDD_REGULATORS(vdd_sr2_pll, VDD_SR2_PLL_NUM, 2,
 static struct pll_freq_tbl apcs_pll_freq[] = {
 	F_APCS_PLL( 998400000, 52, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1094400000, 57, 0x0, 0x1, 0x0, 0x0, 0x0),
-	F_APCS_PLL(1152000000, 60, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1190400000, 62, 0x0, 0x1, 0x0, 0x0, 0x0),
-	F_APCS_PLL(1209600000, 63, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1248000000, 65, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1401600000, 73, 0x0, 0x1, 0x0, 0x0, 0x0),
 	PLL_F_END
@@ -449,6 +449,7 @@ static struct pll_vote_clk gpll1_clk_src = {
 	},
 };
 
+DEFINE_EXT_CLK(gpll1_aux_clk_src, &gpll1_clk_src.c);
 static struct pll_vote_clk gpll2_clk_src = {
 	.en_reg = (void __iomem *)APCS_GPLL_ENA_VOTE,
 	.en_mask = BIT(2),
@@ -908,6 +909,7 @@ static struct rcg_clk jpeg0_clk_src = {
 static struct clk_freq_tbl ftbl_gcc_camss_mclk0_1_clk[] = {
 	F(   9600000,	      xo,   2,	  0,	0),
 	F(  23880000,      gpll0,   1,    2,   67),
+	F(  26022000,      gpll1_aux,   1,  1, 34),
 	F(  66670000,	   gpll0,  12,	  0,	0),
 	F_END
 };
@@ -2334,6 +2336,19 @@ static struct branch_clk gcc_venus0_vcodec0_clk = {
 	},
 };
 
+static struct gate_clk gcc_snoc_qosgen_clk = {
+	.en_mask = BIT(0),
+	.en_reg = SNOC_QOSGEN,
+	.base = &virt_bases[GCC_BASE],
+	.c = {
+		.dbg_name = "gcc_snoc_qosgen_clk",
+		.ops = &clk_ops_gate,
+		.flags = CLKFLAG_SKIP_HANDOFF,
+		CLK_INIT(gcc_snoc_qosgen_clk.c),
+	},
+};
+
+
 static struct mux_clk gcc_debug_mux;
 static struct clk_ops clk_ops_debug_mux;
 
@@ -2722,6 +2737,9 @@ static struct clk_lookup msm_clocks_lookup[] = {
 	CLK_LIST(gcc_crypto_ahb_clk),
 	CLK_LIST(gcc_crypto_axi_clk),
 	CLK_LIST(crypto_clk_src),
+
+	/* QoS Reference clock */
+	CLK_LIST(gcc_snoc_qosgen_clk),
 };
 
 static int msm_gcc_probe(struct platform_device *pdev)
