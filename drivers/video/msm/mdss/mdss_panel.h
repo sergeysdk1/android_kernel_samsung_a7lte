@@ -377,6 +377,8 @@ struct mdss_mdp_pp_tear_check {
 	u32 refx100;
 };
 
+struct mdss_livedisplay_ctx;
+
 struct mdss_panel_info {
 	u32 xres;
 	u32 yres;
@@ -481,6 +483,8 @@ struct mipi_samsung_driver_data {
 	struct lcd_device *lcd_device;
 	void *mdss_panel_data;
 	void *mdss_dsi_ctrl_pdata;
+
+	struct mdss_livedisplay_ctx *livedisplay;
 };
 
 struct mdss_panel_data {
