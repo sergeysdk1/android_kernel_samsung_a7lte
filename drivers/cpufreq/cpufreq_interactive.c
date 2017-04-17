@@ -167,7 +167,7 @@ static u64 round_to_nw_start(u64 jif,
 		do_div(jif, step);
 		ret = (jif + 1) * step;
 	} else {
-		ret = jif + usecs_to_jiffies(tunables->timer_rate);
+		ret = jiffies + usecs_to_jiffies(tunables->timer_rate);
 	}
 
 	return ret;
@@ -460,9 +460,9 @@ static void cpufreq_interactive_timer(unsigned long data)
 	cpu_load = loadadjfreq / pcpu->policy->cur;
 	boosted = tunables->boost_val || now < tunables->boostpulse_endtime;
 
-	//Limit cpu_load within 100
-	if(tunables->use_sched_load)
-		if(cpu_load > 100) cpu_load = 100;
+
+
+
 
 	if (cpu_load >= tunables->go_hispeed_load || boosted) {
 		if (pcpu->policy->cur < tunables->hispeed_freq) {
@@ -1587,6 +1587,7 @@ static struct cpufreq_interactive_tunables *alloc_tunable(
 	tunables->timer_rate = DEFAULT_TIMER_RATE;
 	tunables->boostpulse_duration_val = DEFAULT_MIN_SAMPLE_TIME;
 	tunables->timer_slack_val = DEFAULT_TIMER_SLACK;
+	tunables->align_windows = true;
 
 	spin_lock_init(&tunables->target_loads_lock);
 	spin_lock_init(&tunables->above_hispeed_delay_lock);
