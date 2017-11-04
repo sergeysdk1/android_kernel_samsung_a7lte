@@ -3728,6 +3728,7 @@ static inline int is_arm_mapping_symbol(const char *str)
 	return str[0] == '$' && strchr("atd", str[1])
 	       && (str[2] == '\0' || str[2] == '.');
 }
+
 static const char *symname(struct mod_kallsyms *kallsyms, unsigned int symnum)
 {
 	return kallsyms->strtab + kallsyms->symtab[symnum].st_name;

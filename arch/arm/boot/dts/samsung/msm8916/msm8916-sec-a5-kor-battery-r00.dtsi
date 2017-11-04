@@ -83,6 +83,11 @@
 		battery,charging_reset_time = <0>;
                 qcom,sec-battery-vadc = <&pm8916_vadc>;
 
+		battery,self_discharging_temp_block = <600>;
+		battery,self_discharging_volt_block = <4250>;
+		battery,self_discharging_temp_recov = <550>;
+		battery,self_discharging_temp_pollingtime = <400>;
+
 		charger{
 			status = "disable";
 			/* Charger */

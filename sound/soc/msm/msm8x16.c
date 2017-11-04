@@ -1,4 +1,4 @@
- /* Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
+ /* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -440,14 +440,24 @@ static const struct snd_soc_dapm_widget msm8x16_dapm_widgets[] = {
 #else /* CONFIG_AUDIO_SECONDARY_MIC_USE_EXT_BIAS_ENABLE */
 	SND_SOC_DAPM_MIC("Secondary Mic", NULL),
 #endif /* not CONFIG_AUDIO_SECONDARY_MIC_USE_EXT_BIAS_ENABLE */
+    SND_SOC_DAPM_MIC("Digital Mic0", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic2", NULL),
+	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
 };
-
+static struct snd_soc_dapm_route wcd9335_audio_paths[] = {
+	{"MIC BIAS1", NULL, "MCLK"},
+	{"MIC BIAS2", NULL, "MCLK"},
+	{"MIC BIAS3", NULL, "MCLK"},
+	{"MIC BIAS4", NULL, "MCLK"},
+};
 static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE"};
 static const char *const mi2s_tx_ch_text[] = {"One", "Two", "Three", "Four"};
 static const char *const loopback_mclk_text[] = {"DISABLE", "ENABLE"};
 static char const *pri_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
+					"KHZ_192", "KHZ_8",
+					"KHZ_16", "KHZ_32"};
+static char const *mi2s_tx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192", "KHZ_8",
 					"KHZ_16", "KHZ_32"};
 
@@ -1190,6 +1200,7 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(4, mi2s_tx_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, loopback_mclk_text),
 	SOC_ENUM_SINGLE_EXT(6, pri_rx_sample_rate_text),
+	SOC_ENUM_SINGLE_EXT(6, mi2s_tx_sample_rate_text),
 };
 
 static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
@@ -1905,6 +1916,9 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dapm_context *dapm = &codec->dapm;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_card *card;
+	struct snd_info_entry *entry;
+	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(rtd->card);
 	int ret = 0;
 
 	pr_debug("%s: dev_name%s\n", __func__, dev_name(cpu_dai->dev));
@@ -1915,6 +1929,22 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_new_controls(dapm, msm8x16_dapm_widgets,
 				ARRAY_SIZE(msm8x16_dapm_widgets));
 
+	snd_soc_dapm_add_routes(dapm, wcd9335_audio_paths,
+				ARRAY_SIZE(wcd9335_audio_paths));
+
+	snd_soc_dapm_ignore_suspend(dapm, "Headset Mic");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic0");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic1");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic2");
+	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic3");
+
+	snd_soc_dapm_ignore_suspend(dapm, "AMIC2");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC0");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC1");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC2");
+	snd_soc_dapm_ignore_suspend(dapm, "DMIC3");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK1 OUT");
+	snd_soc_dapm_ignore_suspend(dapm, "SPK2 OUT");
 	snd_soc_dapm_sync(dapm);
 
 #ifndef CONFIG_SAMSUNG_JACK
@@ -1925,6 +1955,20 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 	else
 		ret = -ENOMEM;
 #endif /* CONFIG_SAMSUNG_JACK */
+
+	card = rtd->card->snd_card;
+	entry = snd_register_module_info(card->module,
+						"codecs",
+						card->proc_root);
+	if (!entry) {
+		pr_debug("%s: Cannot create codecs module entry\n",
+			__func__);
+		return 0;
+	}
+	pdata->codec_root = entry;
+	tasha_codec_info_create_codec_entry(pdata->codec_root,
+							codec);
+
 	return ret;
 }
 
@@ -2043,7 +2087,7 @@ static struct snd_soc_dai_link msm8x16_9326_dai[] = {
 	{ /* FrontEnd DAI Link, CPE Service */
 		.name = "CPE Listen service",
 		.stream_name = "CPE Listen Audio Service",
-		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.cpu_dai_name = "CPE_LSM_NOHOST",
 		.platform_name = "msm-cpe-lsm",
 		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 			SND_SOC_DPCM_TRIGGER_POST},

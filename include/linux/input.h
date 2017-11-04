@@ -186,7 +186,6 @@ struct input_dev {
 
 	unsigned int users_private;
 	bool disabled;
-	bool force_disabled;
 
 	struct device dev;
 

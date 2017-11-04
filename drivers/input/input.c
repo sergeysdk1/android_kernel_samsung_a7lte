@@ -1067,8 +1067,7 @@ EXPORT_SYMBOL(input_close_device);
 static int input_enable_device(struct input_dev *dev)
 {
 	int retval;
-        if (dev->force_disabled)
-           return 0;
+
 	retval = mutex_lock_interruptible(&dev->mutex);
 	if (retval)
 		return retval;
@@ -1093,8 +1092,7 @@ out:
 static int input_disable_device(struct input_dev *dev)
 {
 	int retval;
-        if (dev->force_disabled)
-           return 0;
+
 	retval = mutex_lock_interruptible(&dev->mutex);
 	if (retval)
 		return retval;
@@ -1862,42 +1860,6 @@ static ssize_t input_dev_store_enabled(struct device *dev,
 static DEVICE_ATTR(enabled, S_IRUGO | S_IWUSR,
 		   input_dev_show_enabled, input_dev_store_enabled);
 
-static ssize_t input_dev_show_force_disable(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
-{
-	struct input_dev *input_dev = to_input_dev(dev);
-	return scnprintf(buf, PAGE_SIZE, "%d\n", input_dev->force_disabled);
-}
-
-static ssize_t input_dev_store_force_disable(struct device *dev,
-				       struct device_attribute *attr,
-				       const char *buf, size_t size)
-{
-	int ret;
-	bool force_disabled;
-	struct input_dev *input_dev = to_input_dev(dev);
-
-	ret = strtobool(buf, &force_disabled);
-	if (ret || input_dev->force_disabled == force_disabled)
-		return ret;
-        input_dev->force_disabled = false;
-	if (!force_disabled)
-		ret = input_enable_device(input_dev);
-	else
-		ret = input_disable_device(input_dev);
-
-        input_dev->force_disabled = force_disabled;
-
-	if (ret)
-		return ret;
-
-	return size;
-}
-
-static DEVICE_ATTR(force_disable, S_IRUGO | S_IWUSR,
-		   input_dev_show_force_disable, input_dev_store_force_disable);
-
 static struct attribute *input_dev_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_phys.attr,
@@ -1905,7 +1867,6 @@ static struct attribute *input_dev_attrs[] = {
 	&dev_attr_modalias.attr,
 	&dev_attr_properties.attr,
 	&dev_attr_enabled.attr,
-	&dev_attr_force_disable.attr,
 	NULL
 };
 

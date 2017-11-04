@@ -26,6 +26,7 @@
 #define DLP_DEV_PATH	"/dev/sdp_dlp"
 
 #define __DLPIOC		0x78
+#define MAX_EXT_LENGTH 1000 
 
 typedef struct _dlp_lock_set {
 	int user_id;
@@ -33,7 +34,7 @@ typedef struct _dlp_lock_set {
 
 typedef struct _dlp_extension_set {
 	int user_id;
-	char extensions[1000];
+	char extensions[MAX_EXT_LENGTH+1];
 } dlp_extension_set;
 
 #define DLP_LOCK_ENABLE		_IOW(__DLPIOC, 1, dlp_lock_set)

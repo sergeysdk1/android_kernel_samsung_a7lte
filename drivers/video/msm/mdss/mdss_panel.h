@@ -377,8 +377,6 @@ struct mdss_mdp_pp_tear_check {
 	u32 refx100;
 };
 
-struct mdss_livedisplay_ctx;
-
 struct mdss_panel_info {
 	u32 xres;
 	u32 yres;
@@ -457,8 +455,6 @@ struct mdss_panel_info {
 	struct lvds_panel_info lvds;
 	struct edp_panel_info edp;
 
-	struct mdss_livedisplay_ctx *livedisplay;
-
 	/* debugfs structure for the panel */
 	struct mdss_panel_debugfs_info *debugfs_info;
 #if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
@@ -518,6 +514,7 @@ struct mdss_panel_debugfs_info {
 	u32 xres;
 	u32 yres;
 	struct lcd_panel_info lcdc;
+	struct dentry *parent;
 	u32 override_flag;
 	char frame_rate;
 	struct mdss_panel_debugfs_info *next;

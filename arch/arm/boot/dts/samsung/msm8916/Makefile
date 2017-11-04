@@ -122,13 +122,7 @@ ifeq ($(CONFIG_SEC_GT510_PROJECT),y)
 		dtb-y += msm8916-sec-gt510wifi-eur-r06.dtb
 		dtb-y += msm8916-sec-gt510wifi-eur-r07.dtb
 	else ifeq ($(CONFIG_MACH_GT5NOTE10_EUR_OPEN),y)
-		dtb-y += msm8916-sec-gt5note10lte-eur-r00.dtb
-		dtb-y += msm8916-sec-gt5note10lte-eur-r01.dtb
-		dtb-y += msm8916-sec-gt5note10lte-eur-r02.dtb
-		dtb-y += msm8916-sec-gt5note10lte-eur-r03.dtb
-		dtb-y += msm8916-sec-gt5note10lte-eur-r04.dtb
 		dtb-y += msm8916-sec-gt5note10lte-eur-r05.dtb
-		dtb-y += msm8916-sec-gt5note10lte-eur-r06.dtb
 		dtb-y += msm8916-sec-gt5note10lte-eur-r07.dtb
 	else ifeq ($(CONFIG_MACH_GT5NOTE10WIFI_EUR_OPEN),y)
 		dtb-y += msm8916-sec-gt5note10wifi-eur-r03.dtb
@@ -146,12 +140,6 @@ ifeq ($(CONFIG_SEC_GT510_PROJECT),y)
 		dtb-y += msm8916-sec-gt5note10lte-chn-r05.dtb
 		dtb-y += msm8916-sec-gt5note10lte-chn-r07.dtb
 	else ifeq ($(CONFIG_MACH_GT5NOTE10_KOR_OPEN),y)
-		dtb-y += msm8916-sec-gt5note10lte-kor-r00.dtb
-		dtb-y += msm8916-sec-gt5note10lte-kor-r01.dtb
-		dtb-y += msm8916-sec-gt5note10lte-kor-r02.dtb
-		dtb-y += msm8916-sec-gt5note10lte-kor-r03.dtb
-		dtb-y += msm8916-sec-gt5note10lte-kor-r04.dtb
-		dtb-y += msm8916-sec-gt5note10lte-kor-r05.dtb
 		dtb-y += msm8916-sec-gt5note10lte-kor-r06.dtb
 		dtb-y += msm8916-sec-gt5note10lte-kor-r07.dtb
 	endif

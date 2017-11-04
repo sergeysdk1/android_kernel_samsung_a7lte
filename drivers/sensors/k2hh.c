@@ -133,7 +133,8 @@
 #define K2HH_ACC_BW_SCALE_ODR_ENABLE  0x08
 #define K2HH_ACC_BW_SCALE_ODR_DISABLE 0x00
 
-#define DYNAMIC_THRESHOLD             5000
+/* 500 mg (4/256 * 32) */
+#define REACTIVE_ALERT_THRESHOLD      32
 
 #define ENABLE_LPF_CUT_OFF_FREQ		  1
 #define ENABLE_LOG_ACCEL_MAX_OUT	  1
@@ -183,6 +184,7 @@ struct k2hh_p {
 	int sda_gpio;
 	int scl_gpio;
 	int time_count;
+	u32 threshold;
 
 	u8 odr;
 	u8 hr;
@@ -340,7 +342,6 @@ static int k2hh_set_range(struct k2hh_p *data, unsigned char range)
 
 	buf = (mask & new_range) | ((~mask) & temp);
 	ret += k2hh_i2c_write(data, CTRL4_REG, buf);
-	SENSOR_INFO("0x%x\n", new_range);
 
 	return ret;
 }
@@ -372,7 +373,6 @@ static int k2hh_set_odr(struct k2hh_p *data)
 
 	data->odr = new_odr;
 
-	SENSOR_INFO("change odr %d\n", i);
 
 #if defined(ENABLE_LPF_CUT_OFF_FREQ)
 	// To increase LPF cut-off frequency, ODR/DFC
@@ -473,6 +473,7 @@ static int k2hh_set_mode(struct k2hh_p *data, unsigned char mode)
 		ret = k2hh_i2c_read(data, CTRL1_REG, &temp, 1);
 		buf = ((mask & data->odr) | ((~mask) & temp));
 		buf = data->hr | ((~CTRL1_HR_MASK) & buf);
+		buf = CTRL1_BDU_ENABLE | ((~CTRL1_BDU_MASK) & buf);
 		ret += k2hh_i2c_write(data, CTRL1_REG, buf);
 		break;
 	case K2HH_MODE_SUSPEND:
@@ -489,7 +490,6 @@ static int k2hh_set_mode(struct k2hh_p *data, unsigned char mode)
 		break;
 	}
 	mutex_unlock(&data->mode_mutex);
-	SENSOR_INFO("change mode %u\n", mode);
 
 	return ret;
 }
@@ -929,6 +929,7 @@ static ssize_t k2hh_reactive_alert_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	unsigned char threshx, threshy, threshz;
+	u32 thresh32_x, thresh32_y, thresh32_z;
 	int enable = OFF, factory_mode = OFF;
 	struct k2hh_v acc;
 	struct k2hh_p *data = dev_get_drvdata(dev);
@@ -969,6 +970,9 @@ static ssize_t k2hh_reactive_alert_store(struct device *dev,
 				k2hh_set_mode(data, K2HH_MODE_NORMAL);
 				msleep(20);
 				k2hh_read_accel_xyz(data, &acc);
+				acc.x = acc.x - data->caldata.x;
+				acc.y = acc.y - data->caldata.y;
+				acc.z = acc.z - data->caldata.z;
 				k2hh_set_mode(data, K2HH_MODE_SUSPEND);
 			} else {
 				acc.x = data->accdata.x;
@@ -976,17 +980,27 @@ static ssize_t k2hh_reactive_alert_store(struct device *dev,
 				acc.z = data->accdata.z;
 			}
 
-			threshx = (abs(acc.v[data->axis_map_x])
-					+ DYNAMIC_THRESHOLD) >> 8;
-			threshy = (abs(acc.v[data->axis_map_y])
-					+ DYNAMIC_THRESHOLD) >> 8;
-			threshz = (abs(acc.v[data->axis_map_z])
-					+ DYNAMIC_THRESHOLD) >> 8;
+			// Set threshold for each axis dynamically
+			thresh32_x = (((abs(acc.v[data->axis_map_x]) + 100) * 256) / (32768)) + data->threshold;
+			if (thresh32_x > 255)
+				thresh32_x = 255;
+
+			thresh32_y = (((abs(acc.v[data->axis_map_y]) + 100) * 256) / (32768)) + data->threshold;
+			if (thresh32_y > 255)
+				thresh32_y = 255;
+
+			thresh32_z = (((abs(acc.v[data->axis_map_z]) + 100) * 256) / (32768)) + data->threshold;
+			if (thresh32_z > 255)
+				thresh32_z = 255;
+
+			threshx = (unsigned char) thresh32_x;
+			threshy = (unsigned char) thresh32_y;
+			threshz = (unsigned char) thresh32_z;
 
 			k2hh_i2c_write(data, INT_THSX1_REG, threshx);
 			k2hh_i2c_write(data, INT_THSY1_REG, threshy);
 			k2hh_i2c_write(data, INT_THSZ1_REG, threshz);
-			k2hh_i2c_write(data, INT_CFG1_REG, 0x0a);
+			k2hh_i2c_write(data, INT_CFG1_REG, 0x2A);
 		}
 
 		k2hh_i2c_write(data, CTRL7_REG, CTRL7_LIR1);
@@ -1009,6 +1023,33 @@ static ssize_t k2hh_reactive_alert_store(struct device *dev,
 #ifdef CONFIG_MACH_J1_VZW
 	k2hh_regulator_onoff(data, false);
 #endif
+
+	return size;
+}
+
+static ssize_t k2hh_threshold_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct k2hh_p *data = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%u\n", data->threshold);
+}
+
+static ssize_t k2hh_threshold_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	u32 threshold;
+	int ret;
+	struct k2hh_p *data = dev_get_drvdata(dev);
+
+	ret = kstrtou32(buf, 10, &threshold);
+	if (ret) {
+		SENSOR_ERR(" Invalid Argument\n");
+		return ret;
+	}
+
+	data->threshold = threshold;
+	SENSOR_INFO("threshold = %d\n", threshold);
 
 	return size;
 }
@@ -1147,6 +1188,7 @@ static DEVICE_ATTR(lowpassfilter, S_IRUGO | S_IWUSR | S_IWGRP,
 static DEVICE_ATTR(raw_data, S_IRUGO, k2hh_raw_data_read, NULL);
 static DEVICE_ATTR(reactive_alert, S_IRUGO | S_IWUSR | S_IWGRP,
 	k2hh_reactive_alert_show, k2hh_reactive_alert_store);
+static DEVICE_ATTR(threshold, S_IRUGO, k2hh_threshold_show, k2hh_threshold_store);
 
 static struct device_attribute *sensor_attrs[] = {
 	&dev_attr_name,
@@ -1155,6 +1197,7 @@ static struct device_attribute *sensor_attrs[] = {
 	&dev_attr_lowpassfilter,
 	&dev_attr_raw_data,
 	&dev_attr_reactive_alert,
+	&dev_attr_threshold,
 	&dev_attr_selftest,
 	NULL,
 };
@@ -1331,6 +1374,13 @@ static int k2hh_parse_dt(struct k2hh_p *data, struct device *dev)
 		data->negate_z = 0;
 	} else
 		data->negate_z = (u8)temp;
+
+	ret = of_property_read_u32(dNode, "stm,reactive_alert_threshold", &temp);
+	if (ret < 0 || temp < 0 || temp > 255) {
+		SENSOR_ERR("Invalid reactive alert threshold value %u\n", temp);
+		data->threshold = REACTIVE_ALERT_THRESHOLD;
+	} else
+		data->threshold = temp;
 
 	return 0;
 }
@@ -1518,6 +1568,7 @@ static int k2hh_probe(struct i2c_client *client,
 	data->irq_state = 0;
 	data->recog_flag = OFF;
 	data->hr = CTRL1_HR_ENABLE;
+	data->threshold = REACTIVE_ALERT_THRESHOLD;
 
 	k2hh_set_range(data, K2HH_RANGE_4G);
 	k2hh_set_mode(data, K2HH_MODE_SUSPEND);
